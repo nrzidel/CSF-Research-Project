@@ -7,7 +7,7 @@ import keyboard
 
 data = pd.read_csv("PPMI_Cohort_Filtered.csv")
 
-y = y = data["PPMI_COHORT"].replace({"PD":True,"Control":False}).values
+y = y = data["PPMI_COHORT"].values
 X = data.iloc[:, 3:]
 
 # Visualization
