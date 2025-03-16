@@ -12,11 +12,9 @@ X = data.iloc[:, 3:]
 
 # Visualization
 class Multi_Plot_2d:
-    def __init__(self, rows, columns, Three_Dimensional = False):
-        if Three_Dimensional:
-            self.fig, axes = plt.subplots(rows, columns, figsize=(20,10), subplot_kw=dict(projection='3d'))
-        else:
-            self.fig, axes = plt.subplots(rows, columns, figsize=(20,10))    
+    def __init__(self, rows, columns):
+   
+        self.fig, axes = plt.subplots(rows, columns, figsize=(20,10))    
         self.axes = axes.flatten()
     
     def show_plot(self):
@@ -44,7 +42,7 @@ class Multi_Plot_2d:
     
 class Multi_Plot_3d:
     
-    def __init__(self, rows, columns, Three_Dimensional = False):
+    def __init__(self, rows, columns):
         self.fig, axes = plt.subplots(rows, columns, figsize=(20,10), subplot_kw=dict(projection='3d'))
         self.axes = axes.flatten()
     
