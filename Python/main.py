@@ -7,7 +7,7 @@ import keyboard
 
 data = pd.read_csv("PPMI_Cohort_Filtered.csv")
 
-y = data["PPMI_COHORT"].values
+y = y = data["PPMI_COHORT"].replace({"PD":True,"Control":False}).values
 X = data.iloc[:, 3:]
 
 # Visualization
@@ -72,6 +72,16 @@ class Multi_Plot_3d:
                         self.axes[plot_num].set_title("N_Neighbor:{},Min_Dist:{},n_components:{},metric:{}".format(neighbor,dist,component,metric), fontsize=6)
                         plot_num +=1
 
+# UMAP Plots
+
+plot1 = Multi_Plot_2d(4,4)
+plot1.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
+plot1.show_plot()
+plot2 = Multi_Plot_3d(4,4)
+plot2.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[3],metrics=["euclidean"])
+plot2.show_plot()        
+
+
 # X_train, X_test, y_train, y_test = train_test_split(
 #    X, y, test_size=0.2, random_state=32)
 
@@ -85,13 +95,6 @@ class Multi_Plot_3d:
 # from sklearn.metrics import confusion_matrix
 # print(confusion_matrix(y_train, y_pred)) 
 # print(confusion_matrix(y_test, y_predt)) 
-
-plot1 = Multi_Plot_2d(4,4)
-plot1.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
-plot1.show_plot()
-plot2 = Multi_Plot_3d(4,4)
-plot2.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[3],metrics=["euclidean"])
-plot2.show_plot()        
 
 print("Done!")
 
