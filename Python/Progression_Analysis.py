@@ -52,8 +52,6 @@ for column in new_df.columns:
             new_df[column] = new_df[column]/mean_abs
         else:
             new_df[column] = new_df[column]*0
-        if (new_df[column]<0.1).sum()/len(new_df) > 0.75:
-            new_df[column] = 0
 
 
 zero_percentage = (new_df == 0).sum() / len(new_df)
