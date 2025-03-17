@@ -5,10 +5,14 @@ import umap
 import matplotlib.pyplot as plt
 import keyboard
 
-data = pd.read_csv("PPMI_Cohort_Filtered.csv")
+# data = pd.read_csv("PPMI_Cohort_Filtered.csv")
 
-y = y = data["PPMI_COHORT"].values
-X = data.iloc[:, 3:]
+# y = y = data["PPMI_COHORT"].values
+# X = data.iloc[:, 3:]
+
+# Create progression data set
+data = pd.read_csv("data.csv")
+patient_data = pd.read_csv("patient_data.csv")
 
 # Visualization
 class Multi_Plot_2d:
@@ -21,7 +25,7 @@ class Multi_Plot_2d:
         self.fig.tight_layout()
         self.fig.show()
     
-    def UMAP(self, neighbors = [15], min_dist = [0.1], n_components = [2], metrics = ["euclidean"]):
+    def UMAP(self, X=X, neighbors = [15], min_dist = [0.1], n_components = [2], metrics = ["euclidean"]):
         plot_num = 0
         for neighbor in neighbors:
             for dist in min_dist:
@@ -50,7 +54,7 @@ class Multi_Plot_3d:
         self.fig.tight_layout()
         self.fig.show()
     
-    def UMAP(self, neighbors = [15], min_dist = [0.1], n_components = [3], metrics = ["euclidean"]):
+    def UMAP(self, X=X, neighbors = [15], min_dist = [0.1], n_components = [3], metrics = ["euclidean"]):
         plot_num = 0
         for neighbor in neighbors:
             for dist in min_dist:
@@ -72,33 +76,46 @@ class Multi_Plot_3d:
 
 # UMAP Plots
 
-plot1 = Multi_Plot_2d(4,4)
-plot1.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
-plot1.show_plot()
-plot2 = Multi_Plot_3d(4,4)
-plot2.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[3],metrics=["euclidean"])
-plot2.show_plot()        
+# plot1 = Multi_Plot_2d(4,4)
+# plot1.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
+# plot1.show_plot()
+# plot2 = Multi_Plot_3d(4,4)
+# plot2.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[3],metrics=["euclidean"])
+# plot2.show_plot()        
 
 
 # X_train, X_test, y_train, y_test = train_test_split(
 #    X, y, test_size=0.2, random_state=32)
 
-# Naive Bayes... just for fun.
-# from sklearn.naive_bayes import GaussianNB
-# gnb = GaussianNB()
-# gnb.fit(X_train, y_train)
-# y_pred = gnb.predict(X_train)
-# y_predt = gnb.predict(X_test)
+
+
+# from sklearn.model_selection import cross_val_score
+# from sklearn.tree import DecisionTreeClassifier
+
+# clf = DecisionTreeClassifier(random_state=0, class_weight={"Control":0.01,"PD":1})
+# clf.fit(X_train, y_train)
+# y_pred = clf.predict(X_train)
+# y_predt = clf.predict(X_test)
 
 # from sklearn.metrics import confusion_matrix
+# print("Depth = {}".format(clf.get_depth()))
 # print(confusion_matrix(y_train, y_pred)) 
-# print(confusion_matrix(y_test, y_predt)) 
+# print(confusion_matrix(y_test, y_predt))
+
+# importance = clf.feature_importances_
+# importance[importance !=0] = True
+# importance = importance.astype(bool)
+# importance_X = X.loc[:, importance]
+
+# plot1 = Multi_Plot_2d(4,4)
+# plot1.UMAP(X=importance_X, neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
+# plot1.show_plot()
+
 
 print("Done!")
-
-print("Press space to continue...")
-keyboard.wait("space")
-print("Script Closed!")
+# print("Press space to continue...")
+# keyboard.wait("space")
+# print("Script Closed!")
 
         
-
+ 
