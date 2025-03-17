@@ -5,14 +5,10 @@ import umap
 import matplotlib.pyplot as plt
 import keyboard
 
-# data = pd.read_csv("PPMI_Cohort_Filtered.csv")
+data = pd.read_csv("PPMI_Cohort_Filtered.csv")
 
-# y = y = data["PPMI_COHORT"].values
-# X = data.iloc[:, 3:]
-
-# Create progression data set
-data = pd.read_csv("data.csv")
-patient_data = pd.read_csv("patient_data.csv")
+y = y = data["PPMI_COHORT"].values
+X = data.iloc[:, 3:]
 
 # Visualization
 class Multi_Plot_2d:
@@ -25,7 +21,7 @@ class Multi_Plot_2d:
         self.fig.tight_layout()
         self.fig.show()
     
-    def UMAP(self, X=X, neighbors = [15], min_dist = [0.1], n_components = [2], metrics = ["euclidean"]):
+    def UMAP(self, X=None, neighbors = [15], min_dist = [0.1], n_components = [2], metrics = ["euclidean"]):
         plot_num = 0
         for neighbor in neighbors:
             for dist in min_dist:
@@ -54,7 +50,7 @@ class Multi_Plot_3d:
         self.fig.tight_layout()
         self.fig.show()
     
-    def UMAP(self, X=X, neighbors = [15], min_dist = [0.1], n_components = [3], metrics = ["euclidean"]):
+    def UMAP(self, X=None, neighbors = [15], min_dist = [0.1], n_components = [3], metrics = ["euclidean"]):
         plot_num = 0
         for neighbor in neighbors:
             for dist in min_dist:
@@ -74,18 +70,19 @@ class Multi_Plot_3d:
                         self.axes[plot_num].set_title("N_Neighbor:{},Min_Dist:{},n_components:{},metric:{}".format(neighbor,dist,component,metric), fontsize=6)
                         plot_num +=1
 
-# UMAP Plots
-
-# plot1 = Multi_Plot_2d(4,4)
-# plot1.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
-# plot1.show_plot()
-# plot2 = Multi_Plot_3d(4,4)
-# plot2.UMAP(neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[3],metrics=["euclidean"])
-# plot2.show_plot()        
-
-
 # X_train, X_test, y_train, y_test = train_test_split(
 #    X, y, test_size=0.2, random_state=32)
+
+
+# UMAP Plots
+
+plot1 = Multi_Plot_2d(4,4)
+plot1.UMAP(X,neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
+plot1.show_plot()
+plot2 = Multi_Plot_3d(4,4)
+plot2.UMAP(X,neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[3],metrics=["euclidean"])
+plot2.show_plot()        
+
 
 
 
