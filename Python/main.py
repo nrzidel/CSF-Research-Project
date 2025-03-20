@@ -5,7 +5,8 @@ import umap
 import matplotlib.pyplot as plt
 import keyboard
 
-data = pd.read_csv("PPMI_Cohort_Filtered.csv")
+data = pd.read_csv("CSF-Research-Project\Data\PPMI_Cohort_Filtered.csv")
+data = data.drop(data.columns[0], axis=1)   #Drop the first column, which is the sequential numbers from R
 
 y = data["PPMI_COHORT"].values
 X = data.iloc[:, 3:]
@@ -19,7 +20,7 @@ class Multi_Plot_2d:
     
     def show_plot(self):
         self.fig.tight_layout()
-        self.fig.show()
+        plt.show(block=True)
     
     def UMAP(self, X=None, neighbors = [15], min_dist = [0.1], n_components = [2], metrics = ["euclidean"]):
         plot_num = 0
@@ -48,7 +49,7 @@ class Multi_Plot_3d:
     
     def show_plot(self):
         self.fig.tight_layout()
-        self.fig.show()
+        plt.show(block=True)
     
     def UMAP(self, X=None, neighbors = [15], min_dist = [0.1], n_components = [3], metrics = ["euclidean"]):
         plot_num = 0
