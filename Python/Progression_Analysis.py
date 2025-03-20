@@ -47,9 +47,9 @@ for ID in patient_IDs:
     row_num+=1
 for column in new_df.columns:
     if column != "PPMI_COHORT":
-        mean_abs = new_df[column].abs().mean()
-        if mean_abs != 0:
-            new_df[column] = new_df[column]/mean_abs
+        col_range = new_df[column].max()-new_df[column].min()
+        if col_range != 0:
+            new_df[column] = new_df[column]/col_range
         else:
             new_df[column] = new_df[column]*0
 
@@ -90,21 +90,36 @@ class Multi_Plot_2d:
                         self.axes[plot_num].set_title("N_Neighbor:{},Min_Dist:{},n_components:{},metric:{}".format(neighbor,dist,component,metric), fontsize=6)
                         plot_num +=1
 
-plot1 = Multi_Plot_2d(4,4)
-plot1.UMAP(X, neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
-plot1.show_plot()
+# plot1 = Multi_Plot_2d(4,4)
+# plot1.UMAP(X, neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
+# plot1.show_plot()
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=33)
 
-from sklearn.tree import DecisionTreeClassifier
-clf = DecisionTreeClassifier(random_state=0, class_weight={"Control":1,"PD":1})
-clf.fit(X_train, y_train)
-y_pred = clf.predict(X_train)
-y_predt = clf.predict(X_test)
+# from sklearn.tree import DecisionTreeClassifier
+# clf = DecisionTreeClassifier(random_state=0, class_weight={"Control":1,"PD":1})
+# clf.fit(X_train, y_train)
+# y_pred = clf.predict(X_train)
+# y_predt = clf.predict(X_test)
+# from sklearn.metrics import confusion_matrix
+# print("Depth = {}".format(clf.get_depth()))
+# print(confusion_matrix(y_train, y_pred)) 
+# print(confusion_matrix(y_test, y_predt))
+
+from sklearn import svm
 from sklearn.metrics import confusion_matrix
-print("Depth = {}".format(clf.get_depth()))
-print(confusion_matrix(y_train, y_pred)) 
-print(confusion_matrix(y_test, y_predt))
+# clf = svm.SVC(C=C, gamma=gamma, kernel='rbf', probability=True)
+C=[10.0, 1e+02, 1e+03, 1e+04, 1e+05]
+gamma=[1e-3, 1e-4, 1e-05, 1e-06, 1e-07]
+kernels = ['rbf','linear','poly','sigmoid']
+for c in C:
+  for g in gamma:
+    for kernel in kernels:
+        clf = svm.SVC(C=c, gamma=g, kernel=kernel, probability=True) # linear, rbf, polynomial, sigmoid
+        clf.fit(X_train, y_train)
+        y_pred = clf.predict(X_test)
+        tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+        print(c, g, kernel, (tp+tn)/(tp+tn+fp+fn))
 
 # # Naive Bayes... just for fun.
 # from sklearn.naive_bayes import GaussianNB

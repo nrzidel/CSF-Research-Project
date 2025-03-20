@@ -70,21 +70,21 @@ class Multi_Plot_3d:
                         self.axes[plot_num].set_title("N_Neighbor:{},Min_Dist:{},n_components:{},metric:{}".format(neighbor,dist,component,metric), fontsize=6)
                         plot_num +=1
 
-# X_train, X_test, y_train, y_test = train_test_split(
-#    X, y, test_size=0.2, random_state=32)
+
 
 
 # UMAP Plots
 
-plot1 = Multi_Plot_2d(4,4)
-plot1.UMAP(X,neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
-plot1.show_plot()
-plot2 = Multi_Plot_3d(4,4)
-plot2.UMAP(X,neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[3],metrics=["euclidean"])
-plot2.show_plot()        
+# plot1 = Multi_Plot_2d(4,4)
+# plot1.UMAP(X,neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
+# plot1.show_plot()
+# plot2 = Multi_Plot_3d(4,4)
+# plot2.UMAP(X,neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[3],metrics=["euclidean"])
+# plot2.show_plot()        
 
 
-
+X_train, X_test, y_train, y_test = train_test_split(
+   X, y, test_size=0.2, random_state=32)
 
 # from sklearn.model_selection import cross_val_score
 # from sklearn.tree import DecisionTreeClassifier
@@ -108,6 +108,20 @@ plot2.show_plot()
 # plot1.UMAP(X=importance_X, neighbors=[2, 5, 10, 20],min_dist=[0, 0.2, 0.5, 0.99],n_components=[2],metrics=["euclidean"])
 # plot1.show_plot()
 
+from sklearn import svm
+from sklearn.metrics import confusion_matrix
+# clf = svm.SVC(C=C, gamma=gamma, kernel='rbf', probability=True)
+C=[10.0, 1e+02, 1e+03, 1e+04, 1e+05]
+gamma=[1e-3, 1e-4, 1e-05, 1e-06, 1e-07]
+kernels = ['rbf','linear','poly','sigmoid']
+for c in C:
+  for g in gamma:
+    for kernel in kernels:
+        clf = svm.SVC(C=c, gamma=g, kernel=kernel, probability=True) # linear, rbf, polynomial, sigmoid
+        clf.fit(X_train, y_train)
+        y_pred = clf.predict(X_test)
+        tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+        print(c, g, kernel, (tp+tn)/(tp+tn+fp+fn))
 
 print("Done!")
 # print("Press space to continue...")
