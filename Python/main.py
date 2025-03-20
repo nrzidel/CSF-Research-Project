@@ -5,10 +5,11 @@ import umap
 import matplotlib.pyplot as plt
 import keyboard
 
-data = pd.read_csv(".\Data\PPMI_Cohort_Filtered.csv")
+data = pd.read_csv("CSF-Research-Project\Data\PPMI_Cohort_Filtered.csv")
+data = data.drop(data.columns[0], axis=1)   #Drop the first column, which is the sequential numbers from R
 
 y = y = data["PPMI_COHORT"].values
-X = data.iloc[:, 3:]
+X = data.iloc[:, 2:]
 
 # Visualization
 class Multi_Plot_2d:

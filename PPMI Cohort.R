@@ -4,10 +4,10 @@ library(ggplot2)
 library(tidyverse)
 library(MASS)
 
-setwd("~/School/Winter 2025/CSC487/Research")
+setwd("C:/Users/nicho/.vscode/Projects/Research/CSF-Research-Project")
 
-data <- read_xlsx(path = "DATA/FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX", sheet = "Log Transformed Data")
-patient.data <- read_xlsx(path = "DATA/FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX", sheet = "Sample Meta Data")
+data <- read_xlsx(path = "Data/FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX", sheet = "Log Transformed Data")
+patient.data <- read_xlsx(path = "Data/FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX", sheet = "Sample Meta Data")
 
 
 
@@ -54,7 +54,25 @@ whiskers <- function(input.data) {
   }
 }
 
+print(ggplot(PPMI.training.data, mapping = aes(x=`35`, y=(`35` ^ 2), color = PPMI_COHORT)) +
+  geom_count() +
+  scale_size_area())
 
+#Print out two box and whisker plots for each attribute. One for PD and the other for Control
+polyKernal <- function(input.data, degree) {
+  for(i in 3:50) {
+    data <- data.frame(
+      Class = input.data$PPMI_COHORT,
+      Value = input.data[[i]]
+    )
+    
+    # Create the boxplot
+    print(ggplot(data, aes(x = Value, y = (Value ^ degree), color = Class, alpha = .5)) +
+            geom_count() +
+            scale_size_continuous() +
+            labs(title = colnames(input.data[i]), x = "Value", y = degree))
+  }
+}
 
 
 # Function calculates the PCA results from input data; 
