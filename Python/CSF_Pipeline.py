@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import xgboost as xgb
 import graphviz
 from matplotlib.patches import Patch
-from sklearn import preprocessing
+from sklearn import preprocessing, svm
 from sklearn.feature_selection import mutual_info_classif, VarianceThreshold, SelectKBest
-from sklearn import svm
+from sklearn.impute import KNNImputer
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, cross_validate
 from sklearn.ensemble import RandomForestClassifier 
 from sklearn.metrics import confusion_matrix, roc_curve, auc, RocCurveDisplay, roc_auc_score
@@ -18,14 +18,30 @@ class Model:
         self.X = X
         self.y = y
 
+    def cleanData(self, nathresh=.5, k=5):
+        """
+        cleanData modifies Model.X to remove columns containing more than nathresh % missing values. 
+        Any missing values that are not removed are imputed using K Nearest Neigbors.
+
+        Parameters:
+            nathresh: Double Default = .5 (50%); threshold of missing values permitted before a column is dropped
+            k: int Default = 5; number of neigbors to be used for KNNImputer
+        """
+
+        nathresh = .5        # % of samples allowed to be NA before column is dropped
+        self.X = self.X.dropna(axis=1, thresh=int((1 - nathresh) * self.X.shape[0]))
+
+        imputer = KNNImputer(weights='distance', n_neighbors=k)
+        imputer.set_output(transform='pandas')
+        self.X = imputer.fit_transform(self.X, self.y)
+
+
     def featureSelector(self, threshold = 0.0, k = 15):
         """featureSelector returns a subset of k features(columns) from X, based on the
         value of threshold (used for sklearn.feature_selection VarianceThreshold) and
         mutual info classification.
 
         Parameters:
-            X: Pandas DataFrame containing at least k fatures
-            y: A list of the sample class attribures
             threshold: float; default 0. featues with variance less than this value will be ignored
             k: int; number of features to be selected
         
@@ -35,10 +51,10 @@ class Model:
         self.X = sel.fit_transform(self.X, self.y) #Removes low variance features
 
         sel = SelectKBest(mutual_info_classif, k=k)
-        mic_Parameters = sel.get_Parameters()
-        mic_Parameters["random_state"] = 42
+        mic_params = sel.get_params()
+        mic_params["random_state"] = 42
         sel.set_output(transform="pandas")
-        self.X = sel.fit_transform(X, y) #Removes features based on mutual info classifer
+        self.X = sel.fit_transform(self.X, self.y) #Removes features based on mutual info classifer
     
     def rf(self, n=1000, n_splits=5):
         """rf (Random Forest) prints the training and testing scores of a 'n' tree random 
@@ -46,8 +62,6 @@ class Model:
         roc_auc metric
 
         Parameters:
-            X: Pandas DataFrame containing feature data
-            y: A list of the sample class attribures
             n: Default 1000; number of random trees to be generated
             n_splits: Default 5; number of stratified folds to use for cross validation.
         """
@@ -66,8 +80,6 @@ class Model:
         roc_auc metric
 
         Parameters:
-            X: Pandas DataFrame containing feature data
-            y: A list of the sample class attribures
             deg: Default 2; degree for polynomial kernal
             C: Default 1000; C value for SVC
             gamma: Default .001; gamma value for rbf kernal
@@ -184,19 +196,20 @@ def getdata(path="CSF-Research-Project\Data\FORD-0101-21ML+ DATA TABLES_CSF (MET
     return df
 
 
-data = getdata(datasheet=2)
-
-
-
-
-# data = pd.read_csv("CSF-Research-Project\Data\PPMI_Cohort_Filtered.csv")
-# data = data.drop(data.columns[0], axis=1)   #Drop the first column, which is the sequential numbers from R
-
+data = getdata(datasheet=1)
+data.columns = data.columns.astype(str)
 
 y = data["PPMI_COHORT"]
-X = data.drop(data.columns[0:2], axis=1)
+X = data.drop(data.columns[0:1], axis=1)
 
 m = Model(X, y)
-m.featureSelector(.2)
-m.rf()
+m.cleanData()
+m.featureSelector(k=15)
+m.rf(n_splits=10)
+# NOTE: Ask HB what is a good threshold or how to find it
+
+
+#m = Model(X, y)
+#m.featureSelector(.2)
+#m.rf()
 
