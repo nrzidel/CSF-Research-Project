@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import xgboost as xgb
 import graphviz
 from matplotlib.patches import Patch
-from sklearn import preprocessing, svm
+from sklearn import clone, svm
+from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_selection import mutual_info_classif, VarianceThreshold, SelectKBest
 from sklearn.impute import KNNImputer
-from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, cross_validate
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
 from sklearn.ensemble import RandomForestClassifier 
 from sklearn.metrics import confusion_matrix, roc_curve, auc, RocCurveDisplay, roc_auc_score
 
@@ -31,10 +32,11 @@ class Model:
         nathresh = .5        # % of samples allowed to be NA before column is dropped
         self.X = self.X.dropna(axis=1, thresh=int((1 - nathresh) * self.X.shape[0]))
 
+        #NOTE: Optimize k value
+
         imputer = KNNImputer(weights='distance', n_neighbors=k)
         imputer.set_output(transform='pandas')
         self.X = imputer.fit_transform(self.X, self.y)
-
 
     def featureSelector(self, threshold = 0.0, k = 15):
         """featureSelector returns a subset of k features(columns) from X, based on the
@@ -70,9 +72,14 @@ class Model:
         clf = RandomForestClassifier(random_state=42, n_estimators=n)
         cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-        cv_scores = cross_validate(clf, X_train, y_train, cv=cv, scoring='roc_auc', return_train_score=True)
-        print(cv_scores["train_score"])
-        print(cv_scores["test_score"])
+        cv_results = cross_validate(clf, X_train, y_train, cv=cv, scoring='roc_auc', return_train_score=True, return_estimator=True)
+        cv_clf = cv_results['estimator']
+
+        print(self.testModel(X_test, y_test, cv_clf, n_splits))
+
+        #print(cv_results['estimator'])
+        #print(cv_results["train_score"])
+        #print(cv_results["test_score"])
         
     def svc(self, k='rbf', deg=2, C=1000, gamma=.001, n_splits=5):
         """svc (Support Vector Classification) prints the training and testing scores of a Support Vector
@@ -90,22 +97,93 @@ class Model:
         clf = svm.SVC(C=C, gamma=gamma, kernel=k, degree=deg, probability=True)
 
         cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
-        cv_scores = cross_validate(clf, X_train, y_train, cv=cv, scoring='roc_auc', return_train_score=True)
-        print(cv_scores["train_score"])
-        print(cv_scores["test_score"])
+        cv_results = cross_validate(clf, X_train, y_train, cv=cv, scoring='roc_auc', return_train_score=True, return_estimator=True)
+        cv_clf = cv_results['estimator']
 
-    def xgboost(self):
-        mapping = {'Control': 0, 'PD': 1}
-        xgb_y = [mapping.get(item, item) for item in self.y]
-        X_train, X_test, y_train, y_test = train_test_split(self.X, xgb_y, test_size=0.2, random_state=42, stratify=y)
+        print(self.testModel(X_test, y_test, cv_clf, n_splits))
+        
+        # print(cv_results["train_score"])
+        # print(cv_results["test_score"])
 
-        clf = xgb.XGBClassifier(tree_method="hist", early_stopping_rounds=2)
-        clf.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+    def xgboost(self, n_splits=5):
+        # TODO: xgboost has numerous parameters which can (and probably should) be modified during optimization
+        """
+        xgboost prints the training and testing scores of an xgboost model using Stratified K Fold
+        cross validation
 
-        ax = xgb.plot_tree(clf, num_trees=2)
-        fig = ax.figure
-        fig.add_axes(ax)
-        plt.show()
+        Parameters: 
+            n_splits: int Default=5; number of stratified folds to use for cross validation.
+        """
+        X_train, X_test, y_train, y_test = train_test_split(self.X, self.y, test_size=0.2, random_state=42, stratify=y)
+
+        clf = xgb.XGBClassifier(tree_method="hist", early_stopping_rounds=5, reg_alpha=2.0)
+        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+
+        cv_results = self.xgbCrossValidate(clf, X_train, y_train, cv)
+        cv_clf = cv_results['estimator']
+
+        print(self.testModel(X_test, y_test, cv_clf, n_splits))
+
+    def xgbCrossValidate(self, estimator, X_in, y_in, cv):
+        """
+        xgbCrossValidate is a custom cross validation method used exclusively for xgboost. Per the xgboost
+        documentaion, 'using early stopping during cross validation may not be a perfect approach because 
+        it changes the model’s number of trees for each validation fold, leading to different model.' The
+        following is a modified version of the sample given on the documentation page. Visit -> 
+        https://xgboost.readthedocs.io/en/latest/python/sklearn_estimator.html <- to see the example.
+
+        Parameters:
+            estimator: XGBClassifier; the classifier object to be fitted and tested. Note: this estimator
+                will be cloned before being passed to fit_and_score().
+            X_in; training data set (X_train), naming convention was modified to avoid confusion within the method.
+            y_in; class data set (y_train), naming convention was modified to avoid confusion within the method.
+            cv; Cross Validator Object.
+        """
+        cv_results = {'estimator':[], 'train_score':[], 'test_score':[]}
+
+        for train, test in cv.split(X_in, y_in):
+            X_train = X_in.iloc[train]
+            X_test = X_in.iloc[test]
+            y_train = y_in[train]
+            y_test = y_in[test]
+            est, train_score, test_score = self.fit_and_score(
+                clone(estimator), X_train, X_test, y_train, y_test
+            )
+            cv_results['estimator'].append(est)
+            cv_results['train_score'].append(train_score)
+            cv_results['test_score'].append(test_score)
+
+        return cv_results
+
+    def fit_and_score(self, estimator, X_train, X_test, y_train, y_test):
+        """
+        fit_and_score fits the XGBClassifier and returns the fitted estimator, training and testing scores
+
+        Parameters:
+            estimator: UNFITTED XGBClassifier
+            X_Train: training feature data set.
+            X_Test: testing feature data set.
+            y_train: training class data set.
+            y_test: testing class data set.
+        """
+        estimator.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+
+        train_score = estimator.score(X_train, y_train)
+        test_score = estimator.score(X_test, y_test)
+
+        return estimator, train_score, test_score
+
+    def testModel(self, X_test, y_test, cv_clf, n_splits):
+        """
+        testModel tests the classification model against the testing data. 
+        """
+        average_accuracy = 0
+        for c in cv_clf:
+            y_predicted = c.predict(X_test)
+            tn, fp, fn, tp = confusion_matrix(y_true=y_test, y_pred=y_predicted).ravel()
+            average_accuracy += (tp+tn)/(tp+tn+fp+fn)
+            print(f'TN: {tn} FP: {fp} FN: {fn} TP: {tp} Training accuracy: {(tp+tn)/(tp+tn+fp+fn):.2f}')
+        return(average_accuracy/n_splits)
 
 
 class dataVisualization:
@@ -202,10 +280,26 @@ data.columns = data.columns.astype(str)
 y = data["PPMI_COHORT"]
 X = data.drop(data.columns[0:1], axis=1)
 
+le = LabelEncoder()
+y = le.fit_transform(y)
+
 m = Model(X, y)
-m.cleanData()
+m.cleanData() #NOTE report on the differences in imputation methods
 m.featureSelector(k=15)
-m.rf(n_splits=10)
+# m.rf(n_splits=10)
+m.xgboost(n_splits=10)
+
+# for i in range(5, 30, 5):
+#    for j in range(250, 2000, 250):
+#        print("Number of metabolites: " + str(i))
+#        print("Number of RF Trees:    " + str(j))
+#        m = Model(X, y)
+#        m.cleanData()
+#        m.featureSelector(k=i)
+#        m.rf(n=j, n_splits=10)
+
+
+
 # NOTE: Ask HB what is a good threshold or how to find it
 
 
