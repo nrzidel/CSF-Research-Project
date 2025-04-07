@@ -17,6 +17,7 @@ from skopt import BayesSearchCV
 from skopt.space import Real, Categorical, Integer
 from xgboost import plot_importance
 
+
 class Process_Data:
     def __init__(self, X, y):
         self.X = X
@@ -99,7 +100,7 @@ search_space = {
     'clf__gamma': Real(0.0, 10.0)
 }
 
-opt = BayesSearchCV(pipe, search_space, cv=10, n_iter=50, scoring='roc_auc', random_state=42) 
+opt = BayesSearchCV(pipe, search_space, cv=5, n_iter=15, scoring='roc_auc', random_state=42) 
 # in reality, you may consider setting cv and n_iter to higher values
 opt.fit(X_train, y_train)
 print(opt.best_estimator_)
@@ -111,4 +112,21 @@ print(opt.score(X_test, y_test))
 xgboost_step = opt.best_estimator_.steps[0]
 xgboost_model = xgboost_step[1]
 plot_importance(xgboost_model)
-    
+
+# (base_score=None, booster=None, callbacks=None,   
+#                                colsample_bylevel=0.9777389931549642,
+#                                colsample_bynode=0.8503107223106829,
+#                                colsample_bytree=0.9358259642316076, device=None,
+#                                early_stopping_rounds=None,
+#                                enable_categorical=False, eval_metric=None,
+#                                feature_types=None, feature_weights=None,
+#                                gamma=4.158210875794536, grow_policy=None,
+#                                importance_type=None,
+#                                interaction_constraints=None,
+#                                learning_rate=0.01390574606467376, max_bin=None,
+#                                max_cat_threshold=None, max_cat_to_onehot=None,
+#                                max_delta_step=None, max_depth=3,
+#                                max_leaves=None, min_child_weight=None,
+#                                missing=nan, monotone_constraints=None,
+#                                multi_strategy=None, n_estimators=None,
+#                                n_jobs=None, num_parallel_tree=None, ...))])
