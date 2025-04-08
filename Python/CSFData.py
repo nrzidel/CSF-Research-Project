@@ -5,7 +5,7 @@ from sklearn.impute import KNNImputer
 
 class getter:
     def __init__(self, datasheet=1):
-        data = self.getdata()
+        data = self.getdata(datasheet=datasheet)
         data.columns = data.columns.astype(str)
 
         self.y = data["PPMI_COHORT"]
