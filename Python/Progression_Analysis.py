@@ -4,6 +4,8 @@ import seaborn as sns
 import umap
 import matplotlib.pyplot as plt
 import keyboard
+from sklearn import preprocessing
+from sklearn.feature_selection import mutual_info_classif, VarianceThreshold, SelectKBest
 
 # data = pd.read_csv("PPMI_Cohort_Filtered.csv")
 
@@ -11,8 +13,9 @@ import keyboard
 # X = data.iloc[:, 3:]
 
 # Create progression data set
-data = pd.read_csv("data.csv")
-patient_data = pd.read_csv("patient_data.csv")
+data = pd.read_csv("Data/data.csv")
+patient_data = pd.read_csv("Data/patient_data.csv")
+
 
 patient_data = patient_data[patient_data["PPMI_CLINICAL_EVENT"]!="NOT_APPLICABLE"]
 patient_IDs = patient_data["PPMI_PATNO"].unique()
@@ -42,16 +45,20 @@ for ID in patient_IDs:
             # Normalized difference
             bl_value = float(data.loc[data["PARENT_SAMPLE_NAME"]==sample_dict[ID][0][0],column].values[0])
             v06_value = float(data.loc[data["PARENT_SAMPLE_NAME"]==sample_dict[ID][0][1],column].values[0])
-            new_df.loc[row_num, column] = (v06_value-bl_value)
-          
+            if bl_value != 0:
+                new_df.loc[row_num, column] = (v06_value-bl_value/bl_value)
+            else:
+                new_df.loc[row_num, column] = (v06_value-bl_value)
     row_num+=1
-for column in new_df.columns:
-    if column != "PPMI_COHORT":
-        col_range = new_df[column].max()-new_df[column].min()
-        if col_range != 0:
-            new_df[column] = new_df[column]/col_range
-        else:
-            new_df[column] = new_df[column]*0
+
+
+# for column in new_df.columns:
+#     if column != "PPMI_COHORT":
+#         col_range = new_df[column].max()-new_df[column].min()
+#         if col_range != 0:
+#             new_df[column] = new_df[column]/col_range
+#         else:
+#             new_df[column] = new_df[column]*0
 
 
 zero_percentage = (new_df == 0).sum() / len(new_df)
@@ -60,6 +67,13 @@ progression_df = new_df.drop(columns=columns_to_drop)
 
 y = new_df["PPMI_COHORT"].values
 X = new_df.iloc[:, 2:]
+
+
+
+sel = VarianceThreshold(1.0)
+sel.set_output(transform="pandas")
+X = sel.fit_transform(X, y) #Removes low variance features
+print(sel.n_features_in_)
 
 class Multi_Plot_2d:
     def __init__(self, rows, columns):
