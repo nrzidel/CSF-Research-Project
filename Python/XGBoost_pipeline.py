@@ -18,54 +18,8 @@ from skopt.space import Real, Categorical, Integer
 from xgboost import plot_importance
 from CSFData import getter
 
+loop_params = False
 
-# class Process_Data:
-#     def __init__(self, X, y):
-#         self.X = X
-#         self.y = y
-
-#     def cleanData(self, nathresh=.5, k=5):
-#             """
-#             cleanData modifies Model.X to remove columns containing more than nathresh % missing values. 
-#             Any missing values that are not removed are imputed using K Nearest Neigbors.
-
-#             Parameters:
-#                 nathresh: Double Default = .5 (50%); threshold of missing values permitted before a column is dropped
-#                 k: int Default = 5; number of neigbors to be used for KNNImputer
-#             """
-
-#             nathresh = .5        # % of samples allowed to be NA before column is dropped
-#             self.X = self.X.dropna(axis=1, thresh=int((1 - nathresh) * self.X.shape[0]))
-
-#             #NOTE: Optimize k value
-
-#             imputer = KNNImputer(weights='distance', n_neighbors=k)
-#             imputer.set_output(transform='pandas')
-#             self.X = imputer.fit_transform(self.X, self.y)
-
-#     def featureSelector(self, threshold = 0.0, k = 20):
-#         """featureSelector returns a subset of k features(columns) from X, based on the
-#         value of threshold (used for sklearn.feature_selection VarianceThreshold) and
-#         mutual info classification.
-
-#         Parameters:
-#             threshold: float; default 0. featues with variance less than this value will be ignored
-#             k: int; number of features to be selected
-        
-#         """
-#         sel = VarianceThreshold(threshold=threshold)
-#         sel.set_output(transform="pandas")
-#         self.X = sel.fit_transform(self.X, self.y) #Removes low variance features
-
-#         sel = SelectKBest(mutual_info_classif, k=k)
-#         mic_params = sel.get_params()
-#         mic_params["random_state"] = 42
-#         sel.set_output(transform="pandas")
-#         self.X = sel.fit_transform(self.X, self.y) #Removes features based on mutual info classifer
-    
-#     def get_data(self):
-#         return self.X, self.y 
-    
 
 # data = pd.read_csv("Data\PPMI_Cohort_Filtered.csv")
 # data = data.drop(data.columns[0], axis=1)   #Drop the first column, which is the sequential numbers from R
@@ -149,7 +103,7 @@ estimators = [
 pipe = Pipeline(steps=estimators)
 
 search_space = {
-    'clf__booster': ("gbtree", "dart", "gblinear"),
+    # 'clf__booster': ("dart", "gblinear"),
     'clf__min_child_weight': Real(0.0, 10),
     'clf__max_delta_step': Integer(0, 10),
     'clf__subsample': Real(0, 1),
@@ -170,52 +124,93 @@ search_space = {
 
 opt = BayesSearchCV(pipe, search_space, cv=5, n_iter=15, scoring='roc_auc', random_state=42) 
 
-highest = 0
-best_model = None
-best_inputs = None
-num_runs = 750
-current_run = 0
-num_failures = 0
-for sheet in [3]:
-    for thresh in [0,0.2,0.5,0.8,1]:
-        for knn in [2, 5, 10, 25, 50]:
-            for varthresh in [0,0.2,0.4,0.6,0.8,1]:
-                for kselect in [10, 15, 20, 30, 50]:
+feature_dictionary = {}
 
-                    data = getter(datasheet=sheet)
-                    X, y = data.getXy(nathresh=thresh, knn = knn, varthresh=varthresh, kselect=kselect)
-                    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
-                    opt.fit(X_train, y_train)
-                    
-                    # in reality, you may consider setting cv and n_iter to higher values
-                    # opt.fit(X_train, y_train)
-                    # print(opt.best_estimator_)
-                    # print(opt.best_score_)
-                    # print(opt.score(X_test, y_test))
-                    # opt.predict(X_test)
-                    # opt.predict_proba(X_test)
-                    # opt.best_estimator_.steps
-                    try: 
+if loop_params:
+    highest = 0
+    best_model = None
+    best_inputs = None
+    num_runs = 125
+    current_run = 0
+    num_failures = 0
+    for sheet in [1]:
+        for thresh in [0.5]:
+            for knn in [11,13,15,17,19]:
+                for varthresh in [0.6,0.7,0.8,0.9,1,]:
+                    for kselect in [15,17,19,21,23,25]:
+
+                        data = getter(datasheet=sheet)
+                        X, y = data.getXy(nathresh=thresh, knn = knn, varthresh=varthresh, kselect=kselect)
+                        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+                        opt.fit(X_train, y_train)
+                        
+                        # in reality, you may consider setting cv and n_iter to higher values
+                        # opt.fit(X_train, y_train)
+                        # print(opt.best_estimator_)
+                        # print(opt.best_score_)
+                        # print(opt.score(X_test, y_test))
+                        # opt.predict(X_test)
+                        # opt.predict_proba(X_test)
+                        # opt.best_estimator_.steps
+                        
                         xgboost_step = opt.best_estimator_.steps[0]
                         xgboost_model = xgboost_step[1]
                         # plot_importance(xgboost_model)
                         if opt.best_score_ > highest:
                             highest = opt.best_score_
+                            print("Better Score Found: {}.".format(highest))
                             best_model = opt
                             best_inputs = [sheet, thresh, knn, varthresh, kselect]
-                    except:
-                        num_failures+=1
-                    
-                    current_run+=1
-                    print("Run {} of {}".format(current_run, num_runs))
+                        importances = opt.best_estimator_.steps[0][1].feature_importances_
+                        named_importances = list(zip(data.get_X_columns(), importances))
+
+                        for i in range(10):
+                            if named_importances[i][0] in feature_dictionary.keys():
+                                feature_dictionary[named_importances[i][0]]+=1
+                            else:
+                                feature_dictionary[named_importances[i][0]]=1
                         
+                        current_run+=1
+                        print("Run {} of {}".format(current_run, num_runs))
+                            
+    print(best_model.best_estimator_)
+    print(best_model.best_score_)
+    print(best_model.score(X_test, y_test))
+    print(best_inputs)
+    print(num_failures)
+    sorted_features = sorted(feature_dictionary, key=lambda x: x[1], reverse=True)
+    print(sorted_features)
 
+else:
 
-print(best_model.best_estimator_)
-print(best_model.best_score_)
-print(best_model.score(X_test, y_test))
-print(best_inputs)
-print(num_failures)
+    features = {'501': 115, '100000295': 60, '100000894': 150, '100001178': 150, '100001315': 150, '100001605': 130, '100002613': 42, '100002927': 59, '100004208': 48, '100004322': 13, '100001403': 86, '100001992': 98, '100001416': 121, '41': 53, '849': 85, '100006191': 1, '100001108': 52, '100004634': 4, '100004284': 15, '100001405': 12, '881': 2, '100001167': 1, '100001538': 23, '100001054': 29, '55': 1}
+    sorted_features = sorted(features.items(), key=lambda item: item[1], reverse = True)
+    top_15_features = sorted_features[:15]
+    feature_list = []
+    for item in top_15_features:
+        feature_list.append(item[0])
 
+    data = getter(datasheet=1)
+    X, y = data.getXy_selectfeatures(columns=feature_list)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+    opt.fit(X_train, y_train)
+    
+    # in reality, you may consider setting cv and n_iter to higher values
 
+    xgboost_step = opt.best_estimator_.steps[0]
+    xgboost_model = xgboost_step[1]
+  
+    print(opt.best_estimator_)
+    print(opt.best_score_)
+    print(opt.score(X_test, y_test))
 
+    data2 = getter(datasheet=1, group="V06")
+    X2, y2 = data2.getXy_selectfeatures(columns=data.get_X_columns())
+    print(opt.score(X2, y2))
+    importances = opt.best_estimator_.steps[0][1].feature_importances_
+    named_importances = zip(data.get_X_columns(), importances)
+    sorted_feature_importances = sorted(named_importances, key=lambda x: x[1], reverse=True)
+    for feature, importance in sorted_feature_importances:
+        print(f"{feature}: {importance}")
+    
+    # sorted_features = {'501': 115, '100000295': 60, '100000894': 150, '100001178': 150, '100001315': 150, '100001605': 130, '100002613': 42, '100002927': 59, '100004208': 48, '100004322': 13, '100001403': 86, '100001992': 98, '100001416': 121, '41': 53, '849': 85, '100006191': 1, '100001108': 52, '100004634': 4, '100004284': 15, '100001405': 12, '881': 2, '100001167': 1, '100001538': 23, '100001054': 29, '55': 1}

@@ -4,14 +4,14 @@ from sklearn.feature_selection import mutual_info_classif, VarianceThreshold, Se
 from sklearn.impute import KNNImputer
 
 class getter:
-    def __init__(self, datasheet=1):
-        data = self.getdata(datasheet=datasheet)
+    def __init__(self, datasheet=1, group = "BL"):
+        data = self.getdata(datasheet=datasheet, group=group)
         data.columns = data.columns.astype(str)
 
         self.y = data["PPMI_COHORT"]
         self.X = data.drop(data.columns[0:1], axis=1)
     
-    def getdata(self, path="CSF-Research-Project\Data\FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX", datasheet=3):
+    def getdata(self, path="C:/Users/kvent/Documents/CSF-Research-Project\Data\FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX", datasheet=3, group = "BL"):
         """ 
         getdata reads from the CSF excel data sheet and returns a Dataframe with the Class data attribute
         attached.
@@ -26,7 +26,7 @@ class getter:
             DataFrame containing with column 0 as the class data and all following columns as attributes
         """
         mapping = {1:'Batch-normalized Data', 2: 'Batch-norm Imputed Data', 3:'Log Transformed Data'}
-        print(path)
+        # print(path)
         patient_data = pd.read_excel(
             path,
             sheet_name = "Sample Meta Data",
@@ -36,7 +36,7 @@ class getter:
         )
         patient_data = patient_data.drop(patient_data[
             (patient_data.COHORT != "PPMI") |
-            (patient_data.PPMI_CLINICAL_EVENT != "BL")
+            (patient_data.PPMI_CLINICAL_EVENT != group)
         ].index)
         patient_data = patient_data.drop("COHORT", axis=1)
         patient_data = patient_data.drop("PPMI_CLINICAL_EVENT", axis=1)
@@ -107,8 +107,19 @@ class getter:
         le = LabelEncoder()
         self.y = le.fit_transform(self.y)
 
-        self.cleanData()
-        self.featureSelector()
+        self.cleanData(nathresh=nathresh, k=knn)
+        self.featureSelector(threshold=varthresh, k = kselect)
 
+        return self.X, self.y
+
+    def get_X_columns(self):
+        return self.X.columns
+    
+    def getXy_selectfeatures(self, columns = None):
+        
+        le = LabelEncoder()
+        self.y = le.fit_transform(self.y)
+        
+        self.X = self.X[columns]
         return self.X, self.y
 
