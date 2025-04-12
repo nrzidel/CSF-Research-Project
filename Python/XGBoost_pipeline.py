@@ -16,102 +16,112 @@ from xgboost import XGBClassifier
 from skopt import BayesSearchCV
 from skopt.space import Real, Categorical, Integer
 from xgboost import plot_importance
+from CSFData import getter
 
 
-class Process_Data:
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
+# class Process_Data:
+#     def __init__(self, X, y):
+#         self.X = X
+#         self.y = y
 
-    def cleanData(self, nathresh=.5, k=5):
-            """
-            cleanData modifies Model.X to remove columns containing more than nathresh % missing values. 
-            Any missing values that are not removed are imputed using K Nearest Neigbors.
+#     def cleanData(self, nathresh=.5, k=5):
+#             """
+#             cleanData modifies Model.X to remove columns containing more than nathresh % missing values. 
+#             Any missing values that are not removed are imputed using K Nearest Neigbors.
 
-            Parameters:
-                nathresh: Double Default = .5 (50%); threshold of missing values permitted before a column is dropped
-                k: int Default = 5; number of neigbors to be used for KNNImputer
-            """
+#             Parameters:
+#                 nathresh: Double Default = .5 (50%); threshold of missing values permitted before a column is dropped
+#                 k: int Default = 5; number of neigbors to be used for KNNImputer
+#             """
 
-            nathresh = .5        # % of samples allowed to be NA before column is dropped
-            self.X = self.X.dropna(axis=1, thresh=int((1 - nathresh) * self.X.shape[0]))
+#             nathresh = .5        # % of samples allowed to be NA before column is dropped
+#             self.X = self.X.dropna(axis=1, thresh=int((1 - nathresh) * self.X.shape[0]))
 
-            #NOTE: Optimize k value
+#             #NOTE: Optimize k value
 
-            imputer = KNNImputer(weights='distance', n_neighbors=k)
-            imputer.set_output(transform='pandas')
-            self.X = imputer.fit_transform(self.X, self.y)
+#             imputer = KNNImputer(weights='distance', n_neighbors=k)
+#             imputer.set_output(transform='pandas')
+#             self.X = imputer.fit_transform(self.X, self.y)
 
-    def featureSelector(self, threshold = 0.0, k = 20):
-        """featureSelector returns a subset of k features(columns) from X, based on the
-        value of threshold (used for sklearn.feature_selection VarianceThreshold) and
-        mutual info classification.
+#     def featureSelector(self, threshold = 0.0, k = 20):
+#         """featureSelector returns a subset of k features(columns) from X, based on the
+#         value of threshold (used for sklearn.feature_selection VarianceThreshold) and
+#         mutual info classification.
 
-        Parameters:
-            threshold: float; default 0. featues with variance less than this value will be ignored
-            k: int; number of features to be selected
+#         Parameters:
+#             threshold: float; default 0. featues with variance less than this value will be ignored
+#             k: int; number of features to be selected
         
-        """
-        sel = VarianceThreshold(threshold=threshold)
-        sel.set_output(transform="pandas")
-        self.X = sel.fit_transform(self.X, self.y) #Removes low variance features
+#         """
+#         sel = VarianceThreshold(threshold=threshold)
+#         sel.set_output(transform="pandas")
+#         self.X = sel.fit_transform(self.X, self.y) #Removes low variance features
 
-        sel = SelectKBest(mutual_info_classif, k=k)
-        mic_params = sel.get_params()
-        mic_params["random_state"] = 42
-        sel.set_output(transform="pandas")
-        self.X = sel.fit_transform(self.X, self.y) #Removes features based on mutual info classifer
+#         sel = SelectKBest(mutual_info_classif, k=k)
+#         mic_params = sel.get_params()
+#         mic_params["random_state"] = 42
+#         sel.set_output(transform="pandas")
+#         self.X = sel.fit_transform(self.X, self.y) #Removes features based on mutual info classifer
     
-    def get_data(self):
-        return self.X, self.y 
+#     def get_data(self):
+#         return self.X, self.y 
     
 
-data = pd.read_csv("Data\PPMI_Cohort_Filtered.csv")
-data = data.drop(data.columns[0], axis=1)   #Drop the first column, which is the sequential numbers from R
+# data = pd.read_csv("Data\PPMI_Cohort_Filtered.csv")
+# data = data.drop(data.columns[0], axis=1)   #Drop the first column, which is the sequential numbers from R
 
-y = data["PPMI_COHORT"].values
-X = data.iloc[:, 3:]
+# y = data["PPMI_COHORT"].values
+# X = data.iloc[:, 3:]
 
-le = LabelEncoder()
-y = le.fit_transform(y)
+# le = LabelEncoder()
+# y = le.fit_transform(y)
 
-data = Process_Data(X,y)
-data.cleanData()
-data.featureSelector(0.9,50)
-X, y = data.get_data()
+# data = Process_Data(X,y)
+# data.cleanData()
+# data.featureSelector(0.9,50)
+# data = getter()
+# X, y = data.getXy()
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
-estimators = [
-    # ('encoder', TargetEncoder()),
-    ('clf', XGBClassifier(random_state=8)) # can customize objective function with the objective parameter
-]
-pipe = Pipeline(steps=estimators)
+# estimators = [
+#     # ('encoder', TargetEncoder()),
+#     ('clf', XGBClassifier(random_state=8)) # can customize objective function with the objective parameter
+# ]
+# pipe = Pipeline(steps=estimators)
 
-search_space = {
-    'clf__max_depth': Integer(2,8),
-    'clf__learning_rate': Real(0.001, 1.0, prior='log-uniform'),
-    'clf__subsample': Real(0.5, 1.0),
-    'clf__colsample_bytree': Real(0.5, 1.0),
-    'clf__colsample_bylevel': Real(0.5, 1.0),
-    'clf__colsample_bynode' : Real(0.5, 1.0),
-    'clf__reg_alpha': Real(0.0, 10.0),
-    'clf__reg_lambda': Real(0.0, 10.0),
-    'clf__gamma': Real(0.0, 10.0)
-}
+# search_space = {
+#     'clf__booster': ("gbtree", "dart", "gblinear"),
+#     'clf__min_child_weight': Real(0.0, 10),
+#     'clf__max_delta_step': Integer(0, 10),
+#     'clf__subsample': Real(0, 1),
+#     'clf__max_depth': Integer(2,8),
+#     'clf__learning_rate': Real(0.001, 1.0, prior='log-uniform'),
+#     'clf__subsample': Real(0.5, 1.0),
+#     'clf__colsample_bytree': Real(0.5, 1.0),
+#     'clf__colsample_bylevel': Real(0.5, 1.0),
+#     'clf__colsample_bynode' : Real(0.5, 1.0),
+#     'clf__reg_alpha': Real(0.0, 10.0),
+#     'clf__reg_lambda': Real(0.0, 10.0),
+#     'clf__gamma': Real(0.0, 10.0),
+#     # 'clf__tree_method': ("exact", "approx", "hist"),
+#     'clf__max_leaves': Integer(0, 10),
+#     'clf__num_parallel_tree': Integer(1,5)
 
-opt = BayesSearchCV(pipe, search_space, cv=5, n_iter=15, scoring='roc_auc', random_state=42) 
-# in reality, you may consider setting cv and n_iter to higher values
-opt.fit(X_train, y_train)
-print(opt.best_estimator_)
-print(opt.best_score_)
-print(opt.score(X_test, y_test))
+# }
+
+# opt = BayesSearchCV(pipe, search_space, cv=5, n_iter=15, scoring='roc_auc', random_state=42) 
+# # in reality, you may consider setting cv and n_iter to higher values
+# opt.fit(X_train, y_train)
+# print(opt.best_estimator_)
+# print(opt.best_score_)
+# print(opt.score(X_test, y_test))
 # opt.predict(X_test)
 # opt.predict_proba(X_test)
 # opt.best_estimator_.steps
-xgboost_step = opt.best_estimator_.steps[0]
-xgboost_model = xgboost_step[1]
-plot_importance(xgboost_model)
+# xgboost_step = opt.best_estimator_.steps[0]
+# xgboost_model = xgboost_step[1]
+# plot_importance(xgboost_model)
 
 # (base_score=None, booster=None, callbacks=None,   
 #                                colsample_bylevel=0.9777389931549642,
@@ -130,3 +140,82 @@ plot_importance(xgboost_model)
 #                                missing=nan, monotone_constraints=None,
 #                                multi_strategy=None, n_estimators=None,
 #                                n_jobs=None, num_parallel_tree=None, ...))])
+
+
+estimators = [
+    # ('encoder', TargetEncoder()),
+    ('clf', XGBClassifier(random_state=8)) # can customize objective function with the objective parameter
+]
+pipe = Pipeline(steps=estimators)
+
+search_space = {
+    'clf__booster': ("gbtree", "dart", "gblinear"),
+    'clf__min_child_weight': Real(0.0, 10),
+    'clf__max_delta_step': Integer(0, 10),
+    'clf__subsample': Real(0, 1),
+    'clf__max_depth': Integer(2,8),
+    'clf__learning_rate': Real(0.001, 1.0, prior='log-uniform'),
+    'clf__subsample': Real(0.5, 1.0),
+    'clf__colsample_bytree': Real(0.5, 1.0),
+    'clf__colsample_bylevel': Real(0.5, 1.0),
+    'clf__colsample_bynode' : Real(0.5, 1.0),
+    'clf__reg_alpha': Real(0.0, 10.0),
+    'clf__reg_lambda': Real(0.0, 10.0),
+    'clf__gamma': Real(0.0, 10.0),
+    # 'clf__tree_method': ("exact", "approx", "hist"),
+    'clf__max_leaves': Integer(0, 10),
+    'clf__num_parallel_tree': Integer(1,5)
+
+}
+
+opt = BayesSearchCV(pipe, search_space, cv=5, n_iter=15, scoring='roc_auc', random_state=42) 
+
+highest = 0
+best_model = None
+best_inputs = None
+num_runs = 750
+current_run = 0
+num_failures = 0
+for sheet in [3]:
+    for thresh in [0,0.2,0.5,0.8,1]:
+        for knn in [2, 5, 10, 25, 50]:
+            for varthresh in [0,0.2,0.4,0.6,0.8,1]:
+                for kselect in [10, 15, 20, 30, 50]:
+
+                    data = getter(datasheet=sheet)
+                    X, y = data.getXy(nathresh=thresh, knn = knn, varthresh=varthresh, kselect=kselect)
+                    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+                    opt.fit(X_train, y_train)
+                    
+                    # in reality, you may consider setting cv and n_iter to higher values
+                    # opt.fit(X_train, y_train)
+                    # print(opt.best_estimator_)
+                    # print(opt.best_score_)
+                    # print(opt.score(X_test, y_test))
+                    # opt.predict(X_test)
+                    # opt.predict_proba(X_test)
+                    # opt.best_estimator_.steps
+                    try: 
+                        xgboost_step = opt.best_estimator_.steps[0]
+                        xgboost_model = xgboost_step[1]
+                        # plot_importance(xgboost_model)
+                        if opt.best_score_ > highest:
+                            highest = opt.best_score_
+                            best_model = opt
+                            best_inputs = [sheet, thresh, knn, varthresh, kselect]
+                    except:
+                        num_failures+=1
+                    
+                    current_run+=1
+                    print("Run {} of {}".format(current_run, num_runs))
+                        
+
+
+print(best_model.best_estimator_)
+print(best_model.best_score_)
+print(best_model.score(X_test, y_test))
+print(best_inputs)
+print(num_failures)
+
+
+
