@@ -128,7 +128,9 @@ else:
     sorted_feature_importances = sorted(named_importances, key=lambda item: item[1], reverse=True)
     for feature, importance in sorted_feature_importances:
         print(f"{feature}: {importance}")
-
+    
+    with open("best_features_model", 'wb') as file:
+        pickle.dump(opt, file)
     
     opt = best_models[0][1]
     data = getter(datasheet=1)
