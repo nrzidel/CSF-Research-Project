@@ -1,14 +1,23 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.feature_selection import VarianceThreshold
 import xgboost as xgb
 import graphviz
-import CSFData
+from CSFData import getter
 from matplotlib.patches import Patch
 from sklearn import clone, svm
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
 from sklearn.ensemble import RandomForestClassifier 
 from sklearn.metrics import confusion_matrix, roc_curve, auc, RocCurveDisplay, roc_auc_score
+from sklearn.pipeline import Pipeline
+from skopt import BayesSearchCV
+from skopt.space import Real, Categorical, Integer
+import pickle
+from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_selection import mutual_info_classif, VarianceThreshold, SelectKBest
+from sklearn.impute import KNNImputer
+
 
 #NOTE: we wil look into removing rows that have a lot of imputed data values
 
@@ -190,28 +199,56 @@ class dataVisualization:
         plt.grid(True)
         plt.show()
 
-g = CSFData.getter()
-X, y = g.getXy()
+estimators = [
+    ('imputer', KNNImputer()),
+    ('varthresh', VarianceThreshold()),
+    ('kselect', SelectKBest(mutual_info_classif)),
+    ('rf', RandomForestClassifier(random_state=42))
+    #('svc', svm.SVC(random_state=42))
+]
+pipe = Pipeline(steps=estimators)
 
-m = Model(X, y)
-m.rf(n_splits=10)
-#m.xgboost(n_splits=10)
+search_space = {
+    'imputer__weights': Categorical({'uniform', 'distance'}),
+    'imputer__n_neighbors': Integer(2, 20),
+    'varthresh__threshold': Real(0.0, 1.0),
+    'kselect__k': Integer(5,20),
+    'rf__n_estimators': Integer(500, 2000),
+    'rf__criterion': Categorical({'gini', 'entropy', 'log_loss'}),
+    'rf__max_depth': Integer(2, 20),
+    'rf__min_samples_split': Integer(2, 10),
+    'rf__min_samples_leaf': Integer(1, 10),
+    'rf__min_weight_fraction_leaf': Real(0.0, 0.5),
+    'rf__min_impurity_decrease': Real(0.0, 10.0),
+    'rf__ccp_alpha': Real(0.0, 1.0)}
 
-#for i in range(5, 30, 5):
-#   for j in range(250, 2000, 250):
-#       print("Number of metabolites: " + str(i))
-#       print("Number of RF Trees:    " + str(j))
-#       m = Model(X, y)
-#       m.cleanData()
-#       m.featureSelector(k=i)
-#       m.rf(n=j, n_splits=10)
+pickle_name = "RF_sheet_1"
 
+print("Entering Loop:")
 
+best_models = []
 
-# NOTE: Ask HB what is a good threshold or how to find it
+for thresh in [0.5]:
+    opt = BayesSearchCV(pipe, search_space, cv=5, n_iter=150, scoring='roc_auc', random_state=42, n_jobs=3) 
 
+    data = getter(datasheet=1)
+    X, y = data.getXy(nathresh=thresh)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+    opt.fit(X_train, y_train)
 
-#m = Model(X, y)
-#m.featureSelector(.2)
-#m.rf()
+    y_score = opt.score(X_test, y_test)
+    print(f"threshold: {thresh} \n score: {y_score}")
 
+    best_models.append([y_score, opt, thresh, data.get_X_columns()])
+    best_models = sorted(best_models, key=lambda x: x[0], reverse=True)
+    if len(best_models)>10:
+        best_models = best_models[:10]
+    
+with open(pickle_name, 'wb') as file:
+    pickle.dump(best_models, file)
+                            
+best_model = best_models[0][1]
+print(best_model.best_estimator_)
+print(best_model.best_score_)
+print(best_model.score(X_test, y_test))
+print(best_models[0][2])
