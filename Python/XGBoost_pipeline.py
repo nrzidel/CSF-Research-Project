@@ -130,7 +130,7 @@ else:
         print(f"{feature}: {importance}")
     
     with open("best_features_model", 'wb') as file:
-        pickle.dump(opt, file)
+        pickle.dump((opt.best_score_, opt, None, data.get_X_columns()), file)
     
     opt = best_models[0][1]
     data = getter(datasheet=1)
