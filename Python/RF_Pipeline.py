@@ -201,9 +201,9 @@ class dataVisualization:
 
 estimators = [
     ('imputer', KNNImputer()),
-    ('varthresh', VarianceThreshold()),
+    #('varthresh', VarianceThreshold()),
     ('kselect', SelectKBest(mutual_info_classif)),
-    ('rf', RandomForestClassifier(random_state=42))
+    ('rf', RandomForestClassifier(n_estimators=1250, random_state=42))
     #('svc', svm.SVC(random_state=42))
 ]
 pipe = Pipeline(steps=estimators)
@@ -211,9 +211,8 @@ pipe = Pipeline(steps=estimators)
 search_space = {
     'imputer__weights': Categorical({'uniform', 'distance'}),
     'imputer__n_neighbors': Integer(2, 20),
-    'varthresh__threshold': Real(0.0, 1.0),
+    #'varthresh__threshold': Real(0.0, 1.0),
     'kselect__k': Integer(5,20),
-    'rf__n_estimators': Integer(500, 2000),
     'rf__criterion': Categorical({'gini', 'entropy', 'log_loss'}),
     'rf__max_depth': Integer(2, 20),
     'rf__min_samples_split': Integer(2, 10),
@@ -228,12 +227,12 @@ print("Entering Loop:")
 
 best_models = []
 
-for thresh in [0.5]:
-    opt = BayesSearchCV(pipe, search_space, cv=5, n_iter=150, scoring='roc_auc', random_state=42, n_jobs=3) 
+for thresh in [0.0, 0.2, 0.4, 0.6]:
+    opt = BayesSearchCV(pipe, search_space, cv=5, n_iter=150, scoring='roc_auc', random_state=42, n_jobs=2) 
 
     data = getter(datasheet=1)
     X, y = data.getXy(nathresh=thresh)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, stratify=y, random_state=42)
     opt.fit(X_train, y_train)
 
     y_score = opt.score(X_test, y_test)
