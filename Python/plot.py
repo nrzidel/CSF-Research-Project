@@ -63,10 +63,12 @@ def plot_confusion_matrix(model, X_test, y_test, title):
     predictions = model.predict(X_test)
     # cm = confusion_matrix(y_test, predictions, labels = model.classes_)
     disp = ConfusionMatrixDisplay.from_predictions(y_test, predictions)
-    disp.plot()
-    # plt.title(title)
+    plt.title(title)
     plt.show()
 
 plot_confusion_matrix(opt_top, X_test_t, y_test_t, "Top Features Model Confusion Matrix")
+plot_confusion_matrix(opt_best, X_test_b, y_test_b, "Best Optimized Model Confusion Matrix")
+
+
 
 
