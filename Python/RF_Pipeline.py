@@ -28,6 +28,7 @@ with open(pickle_name, 'rb') as file:
 
 for model in best_models:
     print(model[1].best_score_)
+    print(model[1].best_estimator_)
 
 estimators = [
     ('imputer', KNNImputer()),
@@ -56,23 +57,24 @@ for scorer in scorers:
 
     pickle_name = f"RF_best_models_{scorer}"
     for thresh in [0.2, 0.3, 0.4, 0.5]:
-        opt = BayesSearchCV(pipe, search_space, cv=10, n_iter=30, scoring=scorer, random_state=42) 
+        opt = BayesSearchCV(pipe, search_space, cv=10, n_iter=30, scoring=scorer, random_state=42, n_jobs=2) 
 
         data = getter(datasheet=1)
         X, y = data.getXy(nathresh=thresh)
 
-        print(y)
-        opt.fit(X, y)
-        print(opt.predict(X))
-        print(opt.best_score_)
-        
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+        opt.fit(X_train, y_train)
+        print(y_test)
+        print(opt.predict(X_test))
+        print(opt.score(X_test, y_test))
         features = opt.best_estimator_[:-1].get_feature_names_out()
 
         best_models.append([
             opt.best_score_, 
             opt, 
             thresh, 
-            opt.best_estimator_[:-1].get_feature_names_out()
+            data.get_X_columns()
             ])
         best_models = sorted(best_models, key=lambda x: x[0], reverse=True)
         if len(best_models)>10:
