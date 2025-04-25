@@ -133,7 +133,7 @@ class model_analyzer:
         id_to_name = chem_df['CHEMICAL_NAME'].to_dict()
 
         # Get feature importances
-        importances = self.opt_best.best_estimator_.steps[3][1].feature_importances_
+        importances = self.opt_best.best_estimator_.steps[0][1].feature_importances_
         named_importances = list(zip(self.X_cols_best, importances))
 
         # Optionally map feature names using lookup
@@ -194,7 +194,7 @@ class model_analyzer:
 
 
 
-analyzer = model_analyzer("RF_best_models_roc_auc", "RF")
+analyzer = model_analyzer("best_features_model_frequency_v3_accuracy", "XGBoost")
 
 analyzer.plot_roc()
 analyzer.plot_importances()
