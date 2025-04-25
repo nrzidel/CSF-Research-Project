@@ -10,6 +10,7 @@ class getter:
 
         self.y = data["PPMI_COHORT"]
         self.X = data.drop(data.columns[0:1], axis=1)
+        self.le = LabelEncoder()
     
     def getdata(self, path=".\Data\FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX", datasheet=3, group = "BL"):
         """ 
@@ -73,9 +74,7 @@ class getter:
             X: pandas dataframe containing kselect features.
             y: array-like containing the class values for the PPMI dataset.
         """
-
-        le = LabelEncoder()
-        self.y = le.fit_transform(self.y)
+        self.y = self.le.fit_transform(self.y)
 
         self.cleanData(nathresh=nathresh)
 
@@ -84,11 +83,22 @@ class getter:
     def get_X_columns(self):
         return self.X.columns
     
-    def getXy_selectfeatures(self, columns = None):
-        
-        le = LabelEncoder()
-        self.y = le.fit_transform(self.y)
+    def getXy_selectfeatures(self, columns = None):   
+        self.y = self.le.fit_transform(self.y)
         
         self.X = self.X[columns]
         return self.X, self.y
+    
+    def unencode(self, y):
+        self.le.fit_transform(self.y)
+        return self.le.inverse_transform(y)
 
+    def getChemNames(self, path=".\Data\FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX"):
+        chem_data = pd.read_excel(
+            path,
+            sheet_name = "Chemical Annotation",
+            header=0,
+            usecols = ["CHEM_ID", "CHEMICAL_NAME"],
+            index_col="CHEM_ID"
+        )
+        return chem_data
