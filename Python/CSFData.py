@@ -51,24 +51,52 @@ class getter:
         df = patient_data.join(df, on="PARENT_SAMPLE_NAME", how='inner')
         return df
     
-    def cleanData(self, nathresh=.5):
+    def cleanData(self, nathresh=.5, k=5):
         """
         cleanData modifies Model.X to remove columns containing more than nathresh % missing values. 
         Any missing values that are not removed are imputed using K Nearest Neigbors.
 
         Parameters:
             nathresh: Double Default = .5 (50%); threshold of missing values permitted before a column is dropped
+            k: int Default = 5; number of neigbors to be used for KNNImputer
         """
         # % of samples allowed to be NA before column is dropped
         self.X = self.X.dropna(axis=1, thresh=int((1 - nathresh) * self.X.shape[0]))
 
-    
-    def getXy(self, nathresh=.5):
+        imputer = KNNImputer(weights='distance', n_neighbors=k)
+        imputer.set_output(transform='pandas')
+        self.X = imputer.fit_transform(self.X, self.y)
+
+    def featureSelector(self, threshold = 0.0, k = 15):
+        """featureSelector returns a subset of k features(columns) from X, based on the
+        value of threshold (used for sklearn.feature_selection VarianceThreshold) and
+        mutual info classification.
+
+        Parameters:
+            threshold: float; default 0. featues with variance less than this value will be ignored
+            k: int; number of features to be selected
+        
         """
-        getXy will call cleanData and return X and y dataframes
+        sel = VarianceThreshold(threshold=threshold)
+        sel.set_output(transform="pandas")
+        self.X = sel.fit_transform(self.X, self.y) #Removes low variance features
+
+        sel = SelectKBest(mutual_info_classif, k=k)
+        mic_params = sel.get_params()
+        mic_params["random_state"] = 42
+        sel.set_output(transform="pandas")
+        self.X = sel.fit_transform(self.X, self.y) #Removes features based on mutual info classifer
+    
+    
+    def getXy(self, nathresh=.5, knn=5, varthresh=0.0, kselect=15):
+        """
+        getXy will call the cleanData and FeatureSelector methods and return the modified X and y dataframes
 
         Parameters:
             nathresh: Double Default = .5 (50%); threshold of missing values permitted before a column is dropped
+            knn: int Default = 5; number of neigbors to be used for KNNImputer
+            varthresh: float; default = 0.0; featues with variance less than this value will be ignored
+            kselect: int; default = 15; number of features to be selected
 
         Returns:
             X: pandas dataframe containing kselect features.
@@ -76,8 +104,9 @@ class getter:
         """
         self.y = self.le.fit_transform(self.y)
 
-        self.cleanData(nathresh=nathresh)
-
+        self.cleanData(nathresh=nathresh, k=knn)
+        self.featureSelector(threshold=varthresh, k = kselect)
+        
         return self.X, self.y
 
     def get_X_columns(self):
