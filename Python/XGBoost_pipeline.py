@@ -57,7 +57,7 @@ best_models = []
 
 if loop_params: # Boolean to generate model list or to post-process the list
 
-    pickle_name = "xgboost_sheet_1_n_iter_25_roc_auc_combined_score_cv10_v7"
+    pickle_name = "xgboost_sheet_1_n_iter_25_accuracy_combined_score_cv10_v7"
     num_runs = 135
     current_run = 0
     # Parameter sweeps are selected based on results from previous runs. This set of 135 is reasonable for running experiments: 1-2 hours.
