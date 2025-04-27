@@ -55,7 +55,7 @@ search_space = {
 
 best_models = []
 
-if loop_params: # Boolean to cgenearate model list or to post process the list
+if loop_params: # Boolean to generate model list or to post-process the list
 
     pickle_name = "xgboost_sheet_1_n_iter_25_roc_auc_combined_score_cv10_v7"
     num_runs = 135
@@ -193,4 +193,3 @@ else:
     for feature, importance in sorted_feature_importances:
         print(f"{feature}: {importance}")
 
-# ['100001178', '100004634', '100001992', '100006191', '999923644', '100001403', '100004208', '100001108', '100001605', '100021467', '100000894', '849', '100002927', '501', '999911299']
