@@ -115,6 +115,7 @@ else:
         #         else:
         #             feature_dictionary[named_importances[i][0]]=named_importances[i][1]
         for i in range(len(named_importances)):
+            if named_importances[i][1]>0:    
                 if named_importances[i][0] in feature_dictionary.keys():
                     feature_dictionary[named_importances[i][0]]+=1
                 else:
