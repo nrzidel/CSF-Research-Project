@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,77 +19,78 @@ from sklearn.feature_selection import mutual_info_classif, VarianceThreshold, Se
 from sklearn.impute import KNNImputer
 from sklearn.inspection import permutation_importance
 
-#TODO get the True/False positives for a whole dataset (confusion matrix)
-
-#NOTE: we wil look into removing rows that have a lot of imputed data values
-
-pickle_name = "RF_best_models_roc_auc"
-with open(pickle_name, 'rb') as file:
-    best_models = pickle.load(file)
-
-for model in best_models:
-    print(model[1].best_score_)
-    print(model[1].best_estimator_)
-
 estimators = [
-    ('imputer', KNNImputer()),
-    ('norm', Normalizer()),
-    ('kselect', SelectKBest(mutual_info_classif)),
+    # ('imputer', KNNImputer()),
+    # ('norm', Normalizer()),
+    # ('kselect', SelectKBest(mutual_info_classif)),
     ('rf', RandomForestClassifier(random_state=42))
 ]
 pipe = Pipeline(steps=estimators)
 
 search_space = {
-    'imputer__weights': Categorical({'uniform', 'distance'}),
-    'imputer__n_neighbors': Integer(2, 20),
-    'norm__norm': Categorical({'l1', 'l2', 'max'}),
-    'kselect__k': Integer(10,20),
+    # 'imputer__weights': Categorical({'uniform', 'distance'}),
+    # 'imputer__n_neighbors': Integer(2, 20),
+    # 'norm__norm': Categorical({'l1', 'l2', 'max'}),
+    # 'kselect__k': Integer(10,20),
     'rf__n_estimators': Integer(50, 500),
     'rf__criterion': Categorical({'gini', 'entropy', 'log_loss'}),
-    'rf__ccp_alpha': Real(0.0, 0.25)
+    'rf__ccp_alpha': Real(0.0, 0.25),
+    'rf__max_depth': Integer(5, 15)
     }
 
+pickle_name = "RF_best_models"
+best_models = []
+num_runs = 135
+current_run = 0
+start_time = time.time()
 
-scorers = ['roc_auc', 'accuracy']
+print("Entering Loop:")
+for sheet in [1]:
+    for thresh in [0.2, 0.35, 0.5]:
+        for knn in [5, 10, 15]:
+            for varthresh in [.5, .8, 1]:
+                for kselect in [20, 25, 30, 40, 50]:
+                    loop_start = time.time()
+                    opt = BayesSearchCV(pipe, search_space, cv=10, n_iter=30, scoring='accuracy', random_state=42, n_jobs=2) 
 
-for scorer in scorers:
-    best_models = []
-    print(f"Entering Loop for {scorer}")
+                    # BL Data
+                    data = getter(datasheet=1)
+                    X, y = data.getXy(nathresh=thresh, knn = knn, varthresh=varthresh, kselect=kselect)
+                    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+                    
+                    # V06 Data
+                    data2 = getter(datasheet=1, group="V06")
+                    X2, y2 = data2.getXy_selectfeatures(columns=data.get_X_columns())
 
-    pickle_name = f"RF_best_models_{scorer}"
-    for thresh in [0.2, 0.3, 0.4, 0.5]:
-        opt = BayesSearchCV(pipe, search_space, cv=10, n_iter=30, scoring=scorer, random_state=42, n_jobs=2) 
+                    opt.fit(X_train, y_train)
+                    test_score = opt.score(X_test, y_test)
+                    V06_score = opt.score(X2, y2)
 
-        data = getter(datasheet=1)
-        X, y = data.getXy(nathresh=thresh)
+                    print(y_test)
+                    print(opt.predict(X_test))
+                    print(test_score)
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+                    best_models.append([
+                        opt.best_score_, 
+                        opt, 
+                        (sheet, thresh, knn, varthresh, kselect), 
+                        data.get_X_columns(),
+                        test_score,
+                        V06_score
+                        ])
+                    best_models = sorted(best_models, key=lambda x: (x[5],x[4],x[0]), reverse=True)
+                    if len(best_models)>20:
+                        best_models = best_models[:20]
+                    
+                    current_run+=1
+                    elapsed = time.time() - loop_start
+                    total_elapsed = time.time() - start_time
+                    print(f"Iteration {current_run}: {elapsed:.2f} sec (Total elapsed: {total_elapsed:.2f} sec)")
+                    print("Run {} of {}".format(current_run, num_runs))
+                    print(f"Estimated time remaining: {((total_elapsed/current_run)*(num_runs-current_run)/60):.2f} min")
 
-        opt.fit(X_train, y_train)
-        print(y_test)
-        print(opt.predict(X_test))
-        print(opt.score(X_test, y_test))
-        features = opt.best_estimator_[:-1].get_feature_names_out()
-
-        best_models.append([
-            opt.best_score_, 
-            opt, 
-            thresh, 
-            data.get_X_columns()
-            ])
-        best_models = sorted(best_models, key=lambda x: x[0], reverse=True)
-        if len(best_models)>10:
-            best_models = best_models[:10]
-
-
-        #Leave one Out Testing
-        model = opt.best_estimator_
-        loo = LeaveOneOut()
-        scores = cross_val_score(model, X, y, cv=loo, scoring=scorer)
-        print("LOOCV mean score:", scores.mean())
-    
-        with open(pickle_name, 'wb') as file:
-            pickle.dump(best_models, file)
+                    with open(pickle_name, 'wb') as file:
+                        pickle.dump(best_models, file)
 
 
 
