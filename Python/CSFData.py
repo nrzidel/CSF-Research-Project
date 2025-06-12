@@ -1,5 +1,6 @@
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.feature_selection import mutual_info_classif, VarianceThreshold, SelectKBest
 from sklearn.impute import KNNImputer
 
@@ -11,6 +12,11 @@ class getter:
         self.y = data["PPMI_COHORT"]
         self.X = data.drop(data.columns[0:1], axis=1)
         self.le = LabelEncoder()
+        self.transformer = ColumnTransformer(
+            transformers=[
+                ('sex', OneHotEncoder(drop='first'), ['PPMI_SEX'])
+            ]
+        )
     
     def getdata(self, path=".\Data\FORD-0101-21ML+ DATA TABLES_CSF (METADATA UPDATE).XLSX", datasheet=3, group = "BL"):
         """ 
@@ -32,7 +38,7 @@ class getter:
             path,
             sheet_name = "Sample Meta Data",
             header=0,
-            usecols = ["PARENT_SAMPLE_NAME", "COHORT", "PPMI_CLINICAL_EVENT", "PPMI_COHORT"],
+            usecols = ["PARENT_SAMPLE_NAME", "COHORT", "PPMI_CLINICAL_EVENT", "PPMI_COHORT", "PPMI_SEX"],
             index_col="PARENT_SAMPLE_NAME"
         )
         patient_data = patient_data.drop(patient_data[
@@ -49,6 +55,11 @@ class getter:
         )
 
         df = patient_data.join(df, on="PARENT_SAMPLE_NAME", how='inner')
+
+        # Remove sex data temporarily so it doesn't get removed by the cleaning process
+        self.ppmi_sex = df['PPMI_SEX']
+        df = df.drop('PPMI_SEX', axis=1)
+
         return df
     
     def cleanData(self, nathresh=.5, k=5):
@@ -106,6 +117,9 @@ class getter:
 
         self.cleanData(nathresh=nathresh, k=knn)
         self.featureSelector(threshold=varthresh, k = kselect)
+
+        self.X['PPMI_SEX'] = self.ppmi_sex
+        self.X['PPMI_SEX'] = self.transformer.fit_transform(self.X)
         
         return self.X, self.y
 
@@ -113,8 +127,10 @@ class getter:
         return self.X.columns
     
     def getXy_selectfeatures(self, columns = None):   
-        self.y = self.le.fit_transform(self.y)
         
+        self.y = self.le.fit_transform(self.y)
+        self.X['PPMI_SEX'] = self.ppmi_sex
+        self.X['PPMI_SEX'] = self.transformer.fit_transform(self.X)
         self.X = self.X[columns]
         return self.X, self.y
     

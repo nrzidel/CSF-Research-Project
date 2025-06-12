@@ -151,7 +151,8 @@ class model_analyzer:
         plt.xlabel("Importance in model")
         plt.title(f"Metabolite importance in {self.name}")
         plt.tight_layout()
-        plt.show()
+        plt.savefig('Images/tester')
+        # plt.show()
 
     def plot_confusion_matrix(self, dataset="BL"):
         """
@@ -194,10 +195,10 @@ class model_analyzer:
 
 
 
-analyzer = model_analyzer("best_features_model_frequency_v3_accuracy", "XGBoost")
+analyzer = model_analyzer("Python/picklejar/xgboost_sheet_1", "Random Forest")
 
-analyzer.plot_roc()
+# analyzer.plot_roc()
 analyzer.plot_importances()
-analyzer.plot_confusion_matrix("BL")
-analyzer.plot_confusion_matrix("V06")
+# analyzer.plot_confusion_matrix("BL")
+# analyzer.plot_confusion_matrix("V06")
 
