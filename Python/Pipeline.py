@@ -61,7 +61,7 @@ class PD_Pipeline():
             # --------------------------------------------------
 
 
-            opt = BayesSearchCV(self.pipe, self.search_space, cv=10, n_iter=3, scoring='accuracy', random_state=42, n_jobs=2) 
+            opt = BayesSearchCV(self.pipe, self.search_space, cv=10, n_iter=25, scoring='accuracy', random_state=42, n_jobs=2) 
 
             # BL Data
             data = getter(datasheet=1)

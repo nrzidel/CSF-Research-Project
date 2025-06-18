@@ -59,6 +59,9 @@ class getter:
         # Remove sex data temporarily so it doesn't get removed by the cleaning process
         self.ppmi_sex = df['PPMI_SEX']
         df = df.drop('PPMI_SEX', axis=1)
+        # Drop select metabolites per Dr. Lewitt
+        exclude = [849, 100001108, 100004634, 100000445, 100006361, 100001605]
+        df = df.drop(columns=exclude, axis=1)
 
         return df
     

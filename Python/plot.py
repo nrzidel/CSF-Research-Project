@@ -112,7 +112,8 @@ class model_analyzer:
         plt.ylabel('True Positive Rate')
         plt.title(f'{self.name}: Baseline vs. Follow-up')
         plt.legend(loc="lower right")
-        plt.show()
+        plt.savefig(f'Images/roc/{self.name}')
+        # plt.show()
 
 
     def plot_importances(self):
@@ -132,14 +133,23 @@ class model_analyzer:
         # Create lookup dictionary: {CHEM_ID: CHEMICAL_NAME}
         id_to_name = chem_df['CHEMICAL_NAME'].to_dict()
 
+        # Hardcode patient sex as a 'chemical name' for feature importance
+        id_to_name['PPMI_SEX'] = 'patient sex'
+
         # Get feature importances
         importances = self.opt_best.best_estimator_.steps[0][1].feature_importances_
         named_importances = list(zip(self.X_cols_best, importances))
 
         # Optionally map feature names using lookup
+        def safe_lookup(fid):
+            try:
+                return id_to_name.get(int(fid), fid)
+            except (ValueError, TypeError):
+                return fid
+
         mapped_named_importances = [
-            (id_to_name.get(int(fid), fid), imp) for fid, imp in named_importances
-        ]
+            (safe_lookup(fid), imp) for fid, imp in named_importances
+]
 
         # Sort and select top 15
         sorted_importances = sorted(mapped_named_importances, key=lambda x: x[1], reverse=True)[:15]
@@ -151,7 +161,7 @@ class model_analyzer:
         plt.xlabel("Importance in model")
         plt.title(f"Metabolite importance in {self.name}")
         plt.tight_layout()
-        plt.savefig('Images/tester')
+        plt.savefig(f'Images/importance/{self.name}')
         # plt.show()
 
     def plot_confusion_matrix(self, dataset="BL"):
@@ -191,14 +201,16 @@ class model_analyzer:
 
         disp = ConfusionMatrixDisplay.from_predictions(y, predictions)
         plt.title(f"Confusion Matrix {self.name}: {dataset}")
-        plt.show()
+        plt.savefig(f'Images/confusion/{dataset} {self.name}')
+        # plt.show()
 
 
 
-analyzer = model_analyzer("Python/picklejar/xgboost_sheet_1", "Random Forest")
+analyzer = model_analyzer("Python\picklejar\RF with gender and modified metabolites", 
+                          "Random Forest; including sex and reduced metabolites")
 
-# analyzer.plot_roc()
+analyzer.plot_roc()
 analyzer.plot_importances()
-# analyzer.plot_confusion_matrix("BL")
-# analyzer.plot_confusion_matrix("V06")
+analyzer.plot_confusion_matrix("BL")
+analyzer.plot_confusion_matrix("V06")
 
