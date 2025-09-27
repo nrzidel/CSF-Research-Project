@@ -5,7 +5,13 @@ from sklearn.feature_selection import mutual_info_classif, VarianceThreshold, Se
 from sklearn.impute import KNNImputer
 
 class getter:
-    def __init__(self, datasheet=1, group = "BL"):
+    def __init__(
+            self, 
+            datasheet=1, 
+            group = "BL",
+            **kwargs
+        ):
+        self.kwargs = kwargs
         data = self.getdata(datasheet=datasheet, group=group)
         data.columns = data.columns.astype(str)
 
@@ -59,9 +65,19 @@ class getter:
         # Remove sex data temporarily so it doesn't get removed by the cleaning process
         self.ppmi_sex = df['PPMI_SEX']
         df = df.drop('PPMI_SEX', axis=1)
-        # Drop select metabolites per Dr. Lewitt
-        exclude = [849, 100001108, 100004634, 100000445, 100006361, 100001605]
-        df = df.drop(columns=exclude, axis=1)
+
+        if self.kwargs['config']['data_settings'].getboolean('modified_metabolites'):
+            # Drop select metabolites per Dr. Lewitt
+            """
+            849:       caffeine 
+            100000445: theobromine
+            100001108: 3-methylxanthine
+            100001605: catechol sulfate
+            100004634: 3-methoxytyramine sulfate
+            100006361: dopamine 3-O-sulfate                   
+            """
+            exclude = [849, 100001108, 100004634, 100000445, 100006361, 100001605]
+            df = df.drop(columns=exclude, axis=1)
 
         return df
     
@@ -121,8 +137,9 @@ class getter:
         self.cleanData(nathresh=nathresh, k=knn)
         self.featureSelector(threshold=varthresh, k = kselect)
 
-        self.X['PPMI_SEX'] = self.ppmi_sex
-        self.X['PPMI_SEX'] = self.transformer.fit_transform(self.X)
+        if self.kwargs['config']['data_settings'].getboolean('patient_sex'):
+            self.X['PPMI_SEX'] = self.ppmi_sex
+            self.X['PPMI_SEX'] = self.transformer.fit_transform(self.X)
         
         return self.X, self.y
 
@@ -132,8 +149,11 @@ class getter:
     def getXy_selectfeatures(self, columns = None):   
         
         self.y = self.le.fit_transform(self.y)
-        self.X['PPMI_SEX'] = self.ppmi_sex
-        self.X['PPMI_SEX'] = self.transformer.fit_transform(self.X)
+
+        if self.kwargs['config']['data_settings'].getboolean('patient_sex'):
+            self.X['PPMI_SEX'] = self.ppmi_sex
+            self.X['PPMI_SEX'] = self.transformer.fit_transform(self.X)
+        
         self.X = self.X[columns]
         return self.X, self.y
     

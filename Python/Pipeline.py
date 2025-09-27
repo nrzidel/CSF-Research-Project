@@ -3,10 +3,8 @@ import pickle
 from CSFData import getter
 from itertools import product
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier 
 from sklearn.pipeline import Pipeline
 from skopt import BayesSearchCV
-from skopt.space import Real, Categorical, Integer
 
 
 class PD_Pipeline():
@@ -16,9 +14,10 @@ class PD_Pipeline():
             title: str,
             estimators: list,
             search_space: dict,
-            selection_params: dict     
+            selection_params: dict, 
+            **kwargs     
         ):
-        
+        self.kwargs = kwargs
         self.title = title
         self.pipe = Pipeline(steps=estimators)
         self.search_space = search_space
@@ -31,8 +30,8 @@ class PD_Pipeline():
             'kselect': []
         }
 
-    
-    def run(self, **kwargs):
+
+    def run(self):
         num_runs = 1
         current_run = 0
         best_models = []
@@ -41,6 +40,8 @@ class PD_Pipeline():
         # Count the number of combinations of selections
         for items in self.selection_params.values():
             num_runs *= len(items)
+
+        print(num_runs)
 
         selection_keys = self.selection_params.keys()
         selection_lists = self.selection_params.values()
@@ -64,14 +65,21 @@ class PD_Pipeline():
             opt = BayesSearchCV(self.pipe, self.search_space, cv=10, n_iter=25, scoring='accuracy', random_state=42, n_jobs=2) 
 
             # BL Data
-            data = getter(datasheet=1)
+            data = getter(datasheet=1, 
+                          group='BL',
+                          **self.kwargs
+                          )
             X, y = data.getXy(nathresh=thresh, knn = knn, varthresh=varthresh, kselect=kselect)
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
         
             # V06 Data
-            data2 = getter(datasheet=1, group="V06")
+            data2 = getter(datasheet=1, 
+                          group='V06',
+                          **self.kwargs
+                          )
             X2, y2 = data2.getXy_selectfeatures(columns=data.get_X_columns())
 
+            # Fit then score against test and V06
             opt.fit(X_train, y_train)
             test_score = opt.score(X_test, y_test)
             V06_score = opt.score(X2, y2)
@@ -97,14 +105,14 @@ class PD_Pipeline():
             current_run+=1
             elapsed = time.time() - loop_start
             total_elapsed = time.time() - start_time
-            print(f"Iteration {current_run}: {elapsed:.2f} sec (Total elapsed: {total_elapsed:.2f} sec)")
-            print("Run {} of {}".format(current_run, num_runs))
-            print(f"Estimated time remaining: {((total_elapsed/current_run)*(num_runs-current_run)/60):.2f} min")
 
-            # Write to the pickle file
-            with open(self.title, 'wb') as file:
-                pickle.dump(best_models, file)
-
+            self.kwargs['logger'].info(f"Iteration {current_run}: {elapsed:.2f} sec (Total elapsed: {total_elapsed:.2f} sec) \n"
+                                  f"Run {current_run} of {num_runs}\n"
+                                  f"Estimated time remaining: {((total_elapsed/current_run)*(num_runs-current_run)/60):.2f} min\n"
+            )
+        # Write to the pickle file
+        with open(f'Python/picklejar/{self.title}', 'wb') as file:
+            pickle.dump(best_models, file)
 
                         
 

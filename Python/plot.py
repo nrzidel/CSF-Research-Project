@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, ConfusionMatrixDisplay, confusion_matrix
 from sklearn.model_selection import train_test_split
 from CSFData import getter
-
+import utility_functions as uf
 
 class model_analyzer:
     def __init__(self, picklepath, modelname="model"):
@@ -16,6 +16,15 @@ class model_analyzer:
             modelname: str, optional
                 A name for the model to be used in plot titles and labels. Default is "model".
         """
+
+        config = uf.get_config()
+        logger = uf.Logger()
+
+        self.kwargs = {
+            'config': config,
+            'logger': logger
+        }
+
         self.picklepath = picklepath
         self.name = modelname
         self.load_best()
@@ -39,7 +48,10 @@ class model_analyzer:
         best_thresh = best_model_tuple[2]
 
         # Get the baseline data, then split
-        data_best = getter(datasheet=1)
+        data_best = getter(datasheet=1, 
+                          group='BL',
+                          **self.kwargs
+                          )
         X_best, y_best = data_best.getXy_selectfeatures(columns=self.X_cols_best)
         X_train, X_test, y_train, y_test = train_test_split(X_best, y_best, test_size=0.2, stratify=y_best, random_state=42)
         self.BL = {
@@ -50,15 +62,17 @@ class model_analyzer:
         }
         
         # Get the V06 data. No split because it is has not been used for training
-        data_best_v06 = getter(datasheet=1,group="V06")
+        data_best_v06 = getter(datasheet=1, 
+                          group='V06',
+                          **self.kwargs
+                          )
         X_v06, y_v06 = data_best_v06.getXy_selectfeatures(columns=self.X_cols_best)
         self.V06 = {
             "X": X_v06,
             "y": y_v06
         }
 
-
-    # === AUC Curves ===
+    # === add AUC Curves ===
     def add_roc(self, X_test, y_test, label, color):
         """
         Adds a ROC curve to the current plot using predicted probabilities from the model.
@@ -115,7 +129,6 @@ class model_analyzer:
         plt.savefig(f'Images/roc/{self.name}')
         # plt.show()
 
-
     def plot_importances(self):
         """
         Plots a horizontal bar chart showing the most important features in the model.
@@ -128,7 +141,10 @@ class model_analyzer:
             to human-readable chemical names. Falls back to IDs if names are unavailable.
         """
 
-        chem_df = getter().getChemNames()
+        chem_df = getter(datasheet=1, 
+                          group='BL',
+                          **self.kwargs
+                          ).getChemNames()
     
         # Create lookup dictionary: {CHEM_ID: CHEMICAL_NAME}
         id_to_name = chem_df['CHEMICAL_NAME'].to_dict()
@@ -184,7 +200,10 @@ class model_analyzer:
             X = self.V06["X"]
             y = self.V06["y"]
         
-        le = getter()
+        le = getter(datasheet=1, 
+                        group='V06',
+                        **self.kwargs
+                        )
 
         predictions = self.opt_best.predict(X)
         
@@ -204,13 +223,12 @@ class model_analyzer:
         plt.savefig(f'Images/confusion/{dataset} {self.name}')
         # plt.show()
 
+if __name__ == '__main__':
 
+    analyzer = model_analyzer("Python\picklejar\RF with Original Metabolites", "RF with Original Metabolites")
 
-analyzer = model_analyzer("Python\picklejar\RF with gender and modified metabolites", 
-                          "Random Forest; including sex and reduced metabolites")
-
-analyzer.plot_roc()
-analyzer.plot_importances()
-analyzer.plot_confusion_matrix("BL")
-analyzer.plot_confusion_matrix("V06")
+    analyzer.plot_roc()
+    analyzer.plot_importances()
+    analyzer.plot_confusion_matrix("BL")
+    analyzer.plot_confusion_matrix("V06")
 
