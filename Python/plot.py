@@ -6,7 +6,7 @@ from CSFData import getter
 import utility_functions as uf
 
 class model_analyzer:
-    def __init__(self, picklepath, modelname="model"):
+    def __init__(self, picklename, modelname="model"):
         """
         Initializes the model_analyzer class by loading a saved model and preparing datasets.
 
@@ -25,9 +25,21 @@ class model_analyzer:
             'logger': logger
         }
 
-        self.picklepath = picklepath
+        self.picklepath = f'Python/picklejar/{picklename}.pickle'
         self.name = modelname
         self.load_best()
+
+    def plot_all(self):
+        """
+        Generates and saves all plots: ROC curves, feature importances, and confusion matrices.
+
+        Returns:
+            None — calls individual plotting methods to generate and save plots.
+        """
+        self.plot_roc()
+        self.plot_importances()
+        self.plot_confusion_matrix("BL")
+        self.plot_confusion_matrix("V06")
 
     def load_best(self):
         """
@@ -225,10 +237,7 @@ class model_analyzer:
 
 if __name__ == '__main__':
 
-    analyzer = model_analyzer("Python\picklejar\RF with Original Metabolites", "RF with Original Metabolites")
+    analyzer = model_analyzer("RF with Original Metabolites", "RF with Original Metabolites")
 
-    analyzer.plot_roc()
-    analyzer.plot_importances()
-    analyzer.plot_confusion_matrix("BL")
-    analyzer.plot_confusion_matrix("V06")
+    analyzer.plot_all()
 

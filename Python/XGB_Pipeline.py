@@ -8,7 +8,7 @@ import pickle
 from Pipeline import PD_Pipeline
 
 
-class eXtremeGradientBoost():
+class eXtremeGradientBoost(PD_Pipeline):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
@@ -50,14 +50,24 @@ class eXtremeGradientBoost():
             'kselect': [20,25,30,40,50]
         }
 
+        # Call the parent constructor if needed
+        super().__init__(
+            estimators=self.estimators,
+            search_space=self.search_space,
+            selection_params=self.selection_params,
+            **kwargs
+        )
+
     def run(
         self,
         name: str
     ):
-        pipe = PD_Pipeline(
-            name, 
-            self.estimators, 
-            self.search_space, 
-            self.selection_params,
-            **self.kwargs)
-        pipe.run()
+        # Call the parent class's run method
+        super().run(name)
+
+    def frequent_features(self, name: str = None):
+        if name is None:
+            name = input('Run frequent features on which pickle? ')
+
+        # Call the parent class's frequent_features method
+        super().frequent_features(name)

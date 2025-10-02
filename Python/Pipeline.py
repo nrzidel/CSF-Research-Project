@@ -11,10 +11,10 @@ class PD_Pipeline():
 
     def __init__(
             self,
-            title: str,
             estimators: list,
             search_space: dict,
             selection_params: dict, 
+            title: str = "default_model_name",
             **kwargs     
         ):
         self.kwargs = kwargs
@@ -22,6 +22,7 @@ class PD_Pipeline():
         self.pipe = Pipeline(steps=estimators)
         self.search_space = search_space
         self.selection_params = selection_params
+        self.test_size = kwargs['config']['model_settings'].getfloat('test_size')
 
         example_selection_params = {
             'thresh': [],
@@ -70,7 +71,7 @@ class PD_Pipeline():
                           **self.kwargs
                           )
             X, y = data.getXy(nathresh=thresh, knn = knn, varthresh=varthresh, kselect=kselect)
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=self.test_size, random_state=42, stratify=y)
         
             # V06 Data
             data2 = getter(datasheet=1, 
@@ -111,10 +112,91 @@ class PD_Pipeline():
                                   f"Estimated time remaining: {((total_elapsed/current_run)*(num_runs-current_run)/60):.2f} min\n"
             )
         # Write to the pickle file
-        with open(f'Python/picklejar/{self.title}', 'wb') as file:
+        with open(f'Python/picklejar/{self.title}.pickle', 'wb') as file:
             pickle.dump(best_models, file)
 
-                        
+    def frequent_features(self, name: str = None):
+        # Load the list of top 20 models
+        with open(f'Python/picklejar/{name}.pickle', 'rb') as file:
+            best_models = pickle.load(file)
+
+        # Create a dictonary of all of the features in each model's feature importances.
+        # Record how often a feature is used.
+        feature_dictionary = {}
+        for model in best_models:
+            model_obj = model[1]
+            x_columns = model[3]
+            importances = model_obj.best_estimator_.steps[0][1].feature_importances_
+            named_importances = list(zip(x_columns, importances))
+            for i in range(len(named_importances)):
+                feature = named_importances[i][0]
+                importance = named_importances[i][1]
+                if feature in feature_dictionary:
+                    feature_dictionary[feature]['count'] += 1
+                    feature_dictionary[feature]['total_importance'] += importance
+                else:
+                    feature_dictionary[feature] = {
+                        'count': 1,
+                        'total_importance': importance
+                    }
+
+        # Calculate average importance for each feature
+        for feature, stats in feature_dictionary.items():
+            stats['average_importance'] = stats['total_importance'] / stats['count']
+
+        # Sort features by count and then by average importance
+        sorted_features = sorted(feature_dictionary.items(), key=lambda x: (x[1]['count'], x[1]['average_importance']), reverse=True)
+            # Example structure of sorted_features:
+            # [
+            #   ('feature1', {'count': 5, 'total_importance': 2.34, 'average_importance': 0.468}),
+            #   ('feature2', {'count': 3, 'total_importance': 1.20, 'average_importance': 0.400}),
+            #   ...
+            # ]
+
+
+
+        # Limit to maximum number of features if specified
+        max_features = self.kwargs['config']['model_settings'].getint('maximum_frequent_features')
+        if max_features is not None:
+            sorted_features = sorted_features[:max_features]
+
+        opt = BayesSearchCV(self.pipe, self.search_space, cv=10, n_iter=50, scoring='roc_auc', random_state=42)
+        data = getter(datasheet=1, 
+                      group='BL', 
+                      **self.kwargs)
+
+        # Get the features from the data. Create a train test data set.
+        X, y = data.getXy_selectfeatures(columns=[feature[0] for feature in sorted_features])
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=self.test_size, stratify=y, random_state=42)
+
+        # Fit the model on BL data
+        opt.fit(X_train, y_train)
+        BL_test_score = opt.score(X_test, y_test)
+
+        self.kwargs['logger'].info(opt.best_estimator_)
+        self.kwargs['logger'].info(f"Best Score: {opt.best_score_}")
+        self.kwargs['logger'].info(f"Test Data Score: {BL_test_score}")
+
+        # V06 Data
+        data_V06 = getter(datasheet=1, 
+                       group="V06", 
+                       **self.kwargs)
+        X_v06, y_v06 = data_V06.getXy_selectfeatures(columns=data.get_X_columns())
+        V06_test_score = opt.score(X_v06, y_v06)
+        self.kwargs['logger'].info(f"V06 Data Score: {V06_test_score}")
+
+        frequent_features_model = [
+            opt.best_score_, 
+            opt,
+            None,
+            data.get_X_columns(),
+            BL_test_score,
+            V06_test_score
+        ]
+
+        # Store the frequent features model.
+        with open(f"Python/picklejar/frequent pickles/{name} Frequent Features.pickle", 'wb') as file:
+            pickle.dump([frequent_features_model], file)
 
 
 
